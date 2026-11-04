@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Each runner uses its default generator: Unix Makefiles on Linux/macOS,
+      # Visual Studio on Windows. CMAKE_BUILD_TYPE is what Makefiles read and
+      # --config is what Visual Studio reads; each ignores the other's flag.
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release .
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # Visual Studio is multi-config, so on Windows the binary lands in a
+      # Release/ subdirectory instead of directly in build/.
+      - name: Run
+        run: ${{ runner.os == 'Windows' && 'build/Release/Project1.exe' || './build/Project1' }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Project1-${{ matrix.os }}
+          path: |
+            build/Project1
+            build/Release/Project1.exe
+          if-no-files-found: error
